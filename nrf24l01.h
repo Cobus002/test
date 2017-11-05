@@ -30,6 +30,14 @@ void nrf24l01_setup_rx(void);
 
 void nrf24l01_send_data(uint8_t *txData, uint8_t numBytes);
 
+uint8_t nrf24l01_get_status();
+
+uint8_t nrf24l01_get_config();
+
+uint8_t nrf24l01_write_reg(uint8_t reg, uint8_t *data, uint8_t numBytes);
+
+uint8_t nrf24l01_read_reg(uint8_t reg, uint8_t *buff, uint8_t numBytes);
+
 
 void nrf24l01_reset_tx(void);
 void nrf24l01_reset_rx(void);

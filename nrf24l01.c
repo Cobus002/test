@@ -46,6 +46,7 @@
 
 #define EN_AA_REG 				(uint8_t)0x01
 #define EN_RXADDR_REG			(uint8_t)0x02
+#define SETUP_RETR_REG			(uint8_t)0x04
 #define RX_PW_P0				(uint8_t)0x11
 
 //Local buffers used for the tx and rx transactions
@@ -65,6 +66,17 @@ void nrf24l01_setup_tx(void){
 	//Make sure that the moduule is not active
 	nrf24l01_ce_low();
 	
+	//Enable the RX address for pipe 0
+	txBuff[0]=(W_MASK)|(EN_RXADDR_REG);
+	txBuff[1]=(1<<0);
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
+	
+	//clear the buffers
+	clear(txBuff);
+	clear(rxBuff);
 	//Set the write mask and then set number of payload len
 	txBuff[0]=(W_MASK|RX_PW_P0);
 	txBuff[1]=(NRF24L01_PAYLOAD_LEN);
@@ -75,12 +87,14 @@ void nrf24l01_setup_tx(void){
 	//clear the buffers
 	clear(txBuff);
 	clear(rxBuff);
-	//Power up the module
-	txBuff[0]=(W_MASK)|(CONFIG_REG);
-	txBuff[1]=(1<<EN_CRC)|(1<<PWR_UP);
+	//Set the write mask and then set number of payload len
+	txBuff[0]=(W_MASK|SETUP_RETR_REG);
+	txBuff[1]=(0x13);
 	nrf24l01_csn_low();
 	spi_transmit_receive(txBuff, rxBuff, 2);
 	nrf24l01_csn_high();
+	
+	
 	
 }
 
@@ -93,6 +107,31 @@ void nrf24l01_setup_rx(void){
 	//Make sure that the moduule is not active
 	nrf24l01_ce_low();
 	
+	//Check that the registers where set correct
+	clear(txBuff);
+	clear(rxBuff);
+	
+	//Set the write mask and then set number of payload len
+	txBuff[0]=(W_MASK|RX_PW_P0);
+	txBuff[1]=(NRF24L01_PAYLOAD_LEN);
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
+	//clear the buffers
+	clear(txBuff);
+	clear(rxBuff);
+	//Set the write mask and then set number of payload len
+	txBuff[0]=(W_MASK|EN_RXADDR_REG);
+	txBuff[1]=(1<<0);
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
+	
+	//clear the buffers
+	clear(txBuff);
+	clear(rxBuff);
 	//Set the registers
 	txBuff[0]	=		(W_MASK|CONFIG_REG);
 	txBuff[1]		=	(1<<EN_CRC)|(1<<PWR_UP)|(1<<PRIM_RX);
@@ -101,11 +140,7 @@ void nrf24l01_setup_rx(void){
 	spi_transmit_receive(txBuff, rxBuff, 2);
 	nrf24l01_csn_high();
 	
-	
-	//Check that the registers where set correct
-	clear(txBuff);
-	clear(rxBuff);
-	
+
 	//Set the module in active RX mode
 	nrf24l01_ce_high();
 	
@@ -113,10 +148,22 @@ void nrf24l01_setup_rx(void){
 
 
 void nrf24l01_send_data(uint8_t *txData, uint8_t numBytes){
-	//Clear the buffers	
+
+	//clear the buffers
 	clear(txBuff);
 	clear(rxBuff);
+	//Power up the module
+	txBuff[0]=(W_MASK)|(CONFIG_REG);
+	txBuff[1]=(1<<EN_CRC)|(1<<PWR_UP);
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
 	
+	
+	//Clear the buffers
+	clear(txBuff);
+	clear(rxBuff);
+		
 	//copy the new content into the txBuff
 	txBuff[0]=(W_TX_PAYLOAD);
 	memcpy(txBuff+sizeof(uint8_t), txData, numBytes);
@@ -129,6 +176,60 @@ void nrf24l01_send_data(uint8_t *txData, uint8_t numBytes){
 	nrf24l01_ce_high();
 	wait_10us();
 	nrf24l01_ce_low();
+	
+}
+
+uint8_t nrf24l01_get_status(){
+	uint8_t send = NOP;
+	uint8_t receive = 0x00;
+	nrf24l01_csn_low();
+	spi_transmit_receive(&send, &receive, 1);
+	nrf24l01_csn_high();
+	
+	return receive;
+	
+}
+
+uint8_t nrf24l01_get_config(){
+	uint8_t send[] = {R_MASK|CONFIG_REG, NOP};
+	uint8_t receive[]={0,0x00};
+		
+	nrf24l01_csn_low();
+	spi_transmit_receive(send, receive, 2);
+	nrf24l01_csn_high();
+		
+	return receive[1];
+		
+}
+
+uint8_t nrf24l01_write_reg(uint8_t reg, uint8_t *data, uint8_t numBytes){
+	
+	clear(rxBuff);
+	clear(txBuff);
+	
+	txBuff[0]=(W_MASK)|(reg);
+	memcpy(txBuff+sizeof(uint8_t), data, numBytes);
+	
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, numBytes+1);
+	nrf24l01_csn_high();
+	
+	
+}
+
+uint8_t nrf24l01_read_reg(uint8_t reg, uint8_t *buff, uint8_t numBytes){
+	clear(rxBuff);
+	clear(txBuff);
+	
+	txBuff[0]=(R_MASK)|(reg);
+	
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, numBytes+1);
+	nrf24l01_csn_high();
+	
+	
+	memcpy(buff, rxBuff+sizeof(uint8_t), numBytes);
+	
 	
 }
 
