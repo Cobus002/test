@@ -38,6 +38,8 @@ uint8_t nrf24l01_write_reg(uint8_t reg, uint8_t *data, uint8_t numBytes);
 
 uint8_t nrf24l01_read_reg(uint8_t reg, uint8_t *buff, uint8_t numBytes);
 
+uint8_t nrf24l01_read_rx(uint8_t *buff, uint8_t numBytes);
+
 
 void nrf24l01_reset_tx(void);
 void nrf24l01_reset_rx(void);

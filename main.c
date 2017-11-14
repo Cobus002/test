@@ -108,6 +108,7 @@ int main(void)
 	USART_Init(MY_UBRR);
 	
 	_delay_ms(2000);
+	USART_Transmit('.');
 	
 	//enable global interrupts
 	ISR1_init();
@@ -124,6 +125,7 @@ int main(void)
 			cli();
 			
 			if(!strncmp(usart_rx_data.buff, "Regs", strlen("Regs"))){
+				
 				//Print all the register values
 				for(uint8_t i=0; i< 10; i++){
 					nrf24l01_read_reg(i, data, 1);
@@ -133,13 +135,13 @@ int main(void)
 					USART_Transmit(' ');
 					USART_Transmit(':');
 					USART_Transmit('\t');
-					USART_println_bin(data);
+					USART_println_bin(data[0]);
 					USART_Transmit('\n');
 					
 				}
 				
 				for(int i=0; i<7; i++ ){
-					nrf24l01_read_reg(i+10, &data, 6);
+					nrf24l01_read_reg(i+10, data, 6);
 					USART_Transmit('1');
 					USART_Transmit(i+48);
 					USART_Transmit(' ');
@@ -168,6 +170,29 @@ int main(void)
 				//Set up the module in rx mode
 				nrf24l01_setup_rx();
 				USART_println("RX - setup complete\n");
+			}else if(!strncmp(usart_rx_data.buff, "TX1", strlen("TX1"))){
+				//Transmit dummy data
+				uint8_t dummy = 0b10111010;
+				nrf24l01_send_data(&dummy,1);
+				USART_println("Transmit - complete\n");
+			}else if(!strncmp(usart_rx_data.buff, "TX2", strlen("TX2"))){
+				//Transmit dummy data
+				uint8_t dummy = 0b10010110;
+				nrf24l01_send_data(&dummy,1);
+				USART_println("Transmit - complete\n");
+			}else if(!strncmp(usart_rx_data.buff, "Read RX", strlen("Read RX"))){
+				clear(data);
+				nrf24l01_read_rx(data, 1);
+				USART_println("Data Received: ");
+				USART_println_bin(data[0]);
+				USART_Transmit('\n');
+				
+			}else if(!strncmp(usart_rx_data.buff, "Reset TX", strlen("Reset TX"))){
+				nrf24l01_reset_tx();
+				USART_println("TX Reset\n");
+			}else if(!strncmp(usart_rx_data.buff, "Reset RX", strlen("Reset RX"))){
+				nrf24l01_reset_rx();
+				USART_println("RX Reset\n");
 			}
 			
 			usart_rx_data.valid=0;
@@ -225,7 +250,12 @@ void spi_transmit_receive(uint8_t *txBuff, uint8_t *rxBuff, uint8_t numBytes){
 	memset(rxBuff, '\0', sizeof(rxBuff));
 	
 	for(uint8_t i=0; i<numBytes; i++){
-		spi_transmit(txBuff[i]);
+			/* Start transmission */
+			SPDR = txBuff[i];
+			/* Wait for transmission complete */
+			while(!(SPSR & (1<<SPIF)))
+			;
+			rxBuff[i]=SPDR;
 	}
 }
 

@@ -95,6 +95,17 @@ void nrf24l01_setup_tx(void){
 	nrf24l01_csn_high();
 	
 	
+	//clear the buffers
+	clear(txBuff);
+	clear(rxBuff);
+	//Power up the module
+	txBuff[0]=(W_MASK)|(CONFIG_REG);
+	txBuff[1]=(1<<EN_CRC)|(1<<PWR_UP);
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
+	
 	
 }
 
@@ -104,7 +115,7 @@ void nrf24l01_setup_rx(void){
 	clear(txBuff);
 	clear(rxBuff);
 	
-	//Make sure that the moduule is not active
+	//Make sure that the module is not active
 	nrf24l01_ce_low();
 	
 	//Check that the registers where set correct
@@ -152,13 +163,6 @@ void nrf24l01_send_data(uint8_t *txData, uint8_t numBytes){
 	//clear the buffers
 	clear(txBuff);
 	clear(rxBuff);
-	//Power up the module
-	txBuff[0]=(W_MASK)|(CONFIG_REG);
-	txBuff[1]=(1<<EN_CRC)|(1<<PWR_UP);
-	nrf24l01_csn_low();
-	spi_transmit_receive(txBuff, rxBuff, 2);
-	nrf24l01_csn_high();
-	
 	
 	//Clear the buffers
 	clear(txBuff);
@@ -227,14 +231,60 @@ uint8_t nrf24l01_read_reg(uint8_t reg, uint8_t *buff, uint8_t numBytes){
 	spi_transmit_receive(txBuff, rxBuff, numBytes+1);
 	nrf24l01_csn_high();
 	
-	
+	//Copy data into the buffer supplied
 	memcpy(buff, rxBuff+sizeof(uint8_t), numBytes);
 	
 	
 }
 
+
+uint8_t nrf24l01_read_rx(uint8_t *buff, uint8_t numBytes){
+	clear(rxBuff);
+	clear(txBuff);
+	
+	txBuff[0]=(R_RX_PAYLOAD);
+	
+	
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, numBytes+1);
+	nrf24l01_csn_high();
+	
+	memcpy(buff, rxBuff+sizeof(uint8_t), numBytes);
+	
+}
+
 void nrf24l01_reset_tx(void){
+	//Use this function when max_rt or TX_DS gets triggered
+	clear(txBuff);
+	clear(rxBuff);
+	//Flush the TX register 
+	
+	
+	//Reset the MAX_RT and TX_DS flag
+	txBuff[0] = (W_MASK)|(STATUS_REG);
+	txBuff[1]=(1<<TX_DS)|(1<<MAX_RT);
+	
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
 }
 
 void nrf24l01_reset_rx(void){
+	//Use this after data received
+	
+	//Reset the RX_DR
+	clear(txBuff);
+	clear(rxBuff);
+	//Flush the TX register
+		
+		
+	//Reset the MAX_RT and TX_DS flag
+	txBuff[0] = (W_MASK)|(STATUS_REG);
+	txBuff[1]=(1<<RX_DR);
+		
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
 }
