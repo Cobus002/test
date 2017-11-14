@@ -2,16 +2,17 @@
 
 
 /****************Commands*****************/
-#define R_MASK				(uint8_t)0b00000000
-#define W_MASK				(uint8_t)0b00100000
-#define R_RX_PAYLOAD		(uint8_t)0b01100001
-#define W_TX_PAYLOAD		(uint8_t)0b10100000
-#define FLUSH_TX			(uint8_t)0b11100001
-#define NOP 				(uint8_t)0xff			
+#define R_MASK						(uint8_t)0b00000000
+#define W_MASK						(uint8_t)0b00100000
+#define R_RX_PAYLOAD				(uint8_t)0b01100001
+#define W_TX_PAYLOAD				(uint8_t)0b10100000
+#define FLUSH_TX					(uint8_t)0b11100001
+#define FLUSH_RX					(uint8_t)0b11100010
+#define NOP 						(uint8_t)0xff			
 
 /***********Registers********************/
 //Config register
-#define CONFIG_REG				0x00
+#define CONFIG_REG					0x00
 /*
  * 7: 	Reserved
  * 6:	MASK_RX_DR
@@ -19,35 +20,35 @@
  * 4:	MASK_MAX_RT
  * 3:	EN_CRC
  * 2:	CRCO
- * 1:	PWR_UP				[1: PWR UP, 0: PWR DOWN]
- * 0:	PRIM_RX				RX/TX Control [1: PRX, 0: PTX]
+ * 1:	PWR_UP						[1: PWR UP, 0: PWR DOWN]
+ * 0:	PRIM_RX						RX/TX Control [1: PRX, 0: PTX]
  */
-#define	EN_CRC					(uint8_t)(0x03)
-#define	PWR_UP					(uint8_t)(0x01)
-#define PRIM_RX					(uint8_t)(0x00)
+#define	EN_CRC						(uint8_t)(0x03)
+#define	PWR_UP						(uint8_t)(0x01)
+#define PRIM_RX						(uint8_t)(0x00)
 
 //Status register
-#define STATUS_REG				(uint8_t)(0x07)
+#define STATUS_REG					(uint8_t)(0x07)
 
 /*
  * 7: 	Reserved
  * 6:	RX_DR
- * 5:	TX_DS					Set when data successfully sent
- * 4:	MAX_RT					Maximum retransmit tries, write 1 to clear
+ * 5:	TX_DS						Set when data successfully sent
+ * 4:	MAX_RT						Maximum retransmit tries, write 1 to clear
  * 3:	RX_P_NO[3]
  * 2:	RX_P_NO[2]
- * 1:	RX_P_NO[1]				[1: PWR UP, 0: PWR DOWN]
- * 0:	TX_FULL					TX_FIFO full
+ * 1:	RX_P_NO[1]					[1: PWR UP, 0: PWR DOWN]
+ * 0:	TX_FULL						TX_FIFO full
  */
-#define RX_DR					(uint8_t)(6)
-#define TX_DS					(uint8_t)(5)
-#define MAX_RT					(uint8_t)(4)
-#define TX_FULL					(uint8_t)(0)
+#define RX_DR						(uint8_t)(6)
+#define TX_DS						(uint8_t)(5)
+#define MAX_RT						(uint8_t)(4)
+#define TX_FULL						(uint8_t)(0)
 
-#define EN_AA_REG 				(uint8_t)0x01
-#define EN_RXADDR_REG			(uint8_t)0x02
-#define SETUP_RETR_REG			(uint8_t)0x04
-#define RX_PW_P0				(uint8_t)0x11
+#define EN_AA_REG 					(uint8_t)0x01
+#define EN_RXADDR_REG				(uint8_t)0x02
+#define SETUP_RETR_REG				(uint8_t)0x04
+#define RX_PW_P0					(uint8_t)0x11
 
 //Local buffers used for the tx and rx transactions
 uint8_t txBuff[TX_RX_BUFF_LEN];
@@ -268,6 +269,18 @@ void nrf24l01_reset_tx(void){
 	spi_transmit_receive(txBuff, rxBuff, 2);
 	nrf24l01_csn_high();
 	
+	clear(txBuff);
+	clear(rxBuff);
+	//Flush the TX register
+		
+		
+	//Reset the MAX_RT and TX_DS flag
+	txBuff[0] = (FLUSH_TX);
+		
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 1);
+	nrf24l01_csn_high();
+	
 }
 
 void nrf24l01_reset_rx(void){
@@ -285,6 +298,19 @@ void nrf24l01_reset_rx(void){
 		
 	nrf24l01_csn_low();
 	spi_transmit_receive(txBuff, rxBuff, 2);
+	nrf24l01_csn_high();
+	
+	
+	clear(txBuff);
+	clear(rxBuff);
+	//Flush the TX register
+		
+		
+	//Reset the MAX_RT and TX_DS flag
+	txBuff[0] = (FLUSH_RX);
+		
+	nrf24l01_csn_low();
+	spi_transmit_receive(txBuff, rxBuff, 1);
 	nrf24l01_csn_high();
 	
 }

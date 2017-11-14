@@ -31,6 +31,12 @@
 #define MY_UBRR				(unsigned int)(F_CPU/16/BAUD -1)
 
 
+#define OUTPUT				(uint8_t) 1
+#define INPUT				(uint8_t) 0
+
+#define OUTPUT_PORT			PORTC
+#define OUTPUT_DDR			DDRC
+
 //Define some macros
 #define setbit(port, bit)		(port) |= (1<< (bit))
 #define clearbit(port, bit)		(port) &= ~(1<<(bit))
@@ -73,6 +79,12 @@ void USART_Transmit(unsigned char data);
 void USART_println(char *str);
 
 void USART_println_bin(uint8_t c);
+
+//Set the port c for input or output depending on the mode that the module is in
+void setup_portc_gpio(uint8_t mode);
+
+uint8_t read_portc_gpio();
+void set_portc_gpio(uint8_t value);
 
 void ISR1_init();
 
@@ -165,16 +177,20 @@ int main(void)
 				//Set the module into tx mode
 				nrf24l01_setup_tx();
 				USART_println("TX - setup complete\n");
+				setup_portc_gpio(INPUT);
 				
 			}else if(!strncmp(usart_rx_data.buff, "Setup RX", strlen("Setup RX"))){
 				//Set up the module in rx mode
 				nrf24l01_setup_rx();
 				USART_println("RX - setup complete\n");
+				setup_portc_gpio(OUTPUT);
 			}else if(!strncmp(usart_rx_data.buff, "TX1", strlen("TX1"))){
 				//Transmit dummy data
-				uint8_t dummy = 0b10111010;
+				uint8_t dummy = read_portc_gpio();
 				nrf24l01_send_data(&dummy,1);
-				USART_println("Transmit - complete\n");
+				USART_println("Transmit - ");
+				USART_println_bin(dummy);
+				USART_Transmit('\n');
 			}else if(!strncmp(usart_rx_data.buff, "TX2", strlen("TX2"))){
 				//Transmit dummy data
 				uint8_t dummy = 0b10010110;
@@ -186,6 +202,7 @@ int main(void)
 				USART_println("Data Received: ");
 				USART_println_bin(data[0]);
 				USART_Transmit('\n');
+				set_portc_gpio(data[0]);
 				
 			}else if(!strncmp(usart_rx_data.buff, "Reset TX", strlen("Reset TX"))){
 				nrf24l01_reset_tx();
@@ -392,6 +409,38 @@ void USART_println_bin(uint8_t c){
 	}
 	
 
+}
+
+
+void setup_portc_gpio(uint8_t mode){
+	switch (mode)
+	{
+		case INPUT:
+			//clear the bits for input
+			OUTPUT_DDR &= ~((1<<0)|(1<<1)|(1<<2)|(1<<3));
+			
+		break;
+		case OUTPUT:
+			//Set the bits for output
+			OUTPUT_DDR |= (1<<0)|(1<<1)|(1<<2)|(1<<3);
+			//Set the pins low
+			PINC &= ~((1<<0)|(1<<1)|(1<<2)|(1<<3));
+		break;
+	}
+}
+
+uint8_t read_portc_gpio(){
+	uint8_t val = 0;
+	//Read the lower 4 pins
+	val = PINC & 0b00001111;
+	return val;
+}
+
+void set_portc_gpio(uint8_t value){
+	//Set the lower 4 bits of portc, ensure no data is entered for upper 4
+	value = value&0x0f;	//Clear the top bits just in case
+	PORTC = ((PORTC&0xf0)|(value));
+	
 }
 
 

@@ -8,13 +8,13 @@ typedef unsigned char uint8_t;
 #define clear(x)	memset((x), 0, sizeof((x)))
 
 /******************Defines**************************/
-#define TX_RX_BUFF_LEN				20
-#define NRF24L01_PAYLOAD_LEN		1
+#define TX_RX_BUFF_LEN					20
+#define NRF24L01_PAYLOAD_LEN			1
 
 /*****************External functions ***************/
-extern void nrf24l01_csn_low();		//SPI Chip Select
+extern void nrf24l01_csn_low();			//SPI Chip Select
 extern void nrf24l01_csn_high();
-extern void nrf24l01_ce_low();		//Chip enable activates RX or TX mode
+extern void nrf24l01_ce_low();			//Chip enable activates RX or TX mode
 extern void nrf24l01_ce_high();		
 extern void wait_10us();	
 
