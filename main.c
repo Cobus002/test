@@ -11,7 +11,17 @@
 #include <string.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
+#include <avr/eeprom.h>
 #include "nrf24l01.h"
+
+//Used to distinguish if the message was for us
+uint8_t EEMEM PairCode;
+uint8_t EEMEM Mode;
+
+//Will initially be undefined
+#define MODE_TX			(uint8_t)1
+#define MODE_RX			(uint8_t)2
+
 
 //Define the pins needed for the spi interface
 #define DDR_SPI DDRB
@@ -55,9 +65,6 @@ typedef struct {
 USART_RX_STRUCT usart_rx_data;
 
 
-
-
-
 //Initialise the spi
 void spi_init(void);
 //Transmit a single char
@@ -91,6 +98,9 @@ void ISR1_init();
 char str[20];
 
 uint8_t data[10];
+
+volatile uint8_t IRQ=0; 
+
 
 
 
@@ -127,10 +137,15 @@ int main(void)
 		
 	sei();
 	
-	
+	//Check what mode I am in
+	uint8_t my_mode = eeprom_read_byte(&Mode);
 	
     while (1) 
     {
+		
+		
+		
+		
 		_delay_ms(100);
 		
 		if(usart_rx_data.valid == 1){
@@ -178,18 +193,24 @@ int main(void)
 				nrf24l01_setup_tx();
 				USART_println("TX - setup complete\n");
 				setup_portc_gpio(INPUT);
+				eeprom_write_byte(&Mode, MODE_TX);
+				my_mode=MODE_TX;
 				
 			}else if(!strncmp(usart_rx_data.buff, "Setup RX", strlen("Setup RX"))){
 				//Set up the module in rx mode
 				nrf24l01_setup_rx();
 				USART_println("RX - setup complete\n");
 				setup_portc_gpio(OUTPUT);
+				eeprom_write_byte(&Mode, MODE_RX);
+				my_mode=MODE_RX;
+				
 			}else if(!strncmp(usart_rx_data.buff, "TX1", strlen("TX1"))){
 				//Transmit dummy data
-				uint8_t dummy = read_portc_gpio();
-				nrf24l01_send_data(&dummy,1);
+				tx_buff[0] = 0xaa;
+				tx_buff[1] = read_portc_gpio();
+				nrf24l01_send_data(tx_buff,2);
 				USART_println("Transmit - ");
-				USART_println_bin(dummy);
+				USART_println_bin(tx_buff[1]);
 				USART_Transmit('\n');
 			}else if(!strncmp(usart_rx_data.buff, "TX2", strlen("TX2"))){
 				//Transmit dummy data
@@ -210,12 +231,80 @@ int main(void)
 			}else if(!strncmp(usart_rx_data.buff, "Reset RX", strlen("Reset RX"))){
 				nrf24l01_reset_rx();
 				USART_println("RX Reset\n");
+			}else if(!strncmp(usart_rx_data.buff, "Set Addr:", strlen("Set Addr:"))){
+				uint8_t pairCode = usart_rx_data.buff[strlen("Set Addr:")];
+				eeprom_write_byte(&PairCode, pairCode);
+				USART_println("PairCode is:");
+				USART_Transmit(eeprom_read_byte(&PairCode));
+				USART_Transmit('\n');
 			}
 			
 			usart_rx_data.valid=0;
 			clear(usart_rx_data.buff);
 			sei();
 		}
+		
+		
+		if (my_mode==MODE_TX)
+		{
+			
+			if(IRQ){
+				//Check if sent successfully
+				nrf24l01_read_reg(0x07, rx_buff, 1);
+				if(0x01&(rx_buff[0]>>5)){
+					//Data sent successfully
+					USART_println("Data sent successfully \n");
+				}else if(0x01&(rx_buff[0]>>4)){
+					//Max retries occurred
+					USART_println("Max Retries occurred \n");
+				}
+				
+				nrf24l01_reset_tx();
+				IRQ=0;
+				
+			}else{
+				//Read the switches
+				uint8_t switches = read_portc_gpio();
+				tx_buff[0]=eeprom_read_byte(&PairCode);
+				tx_buff[1]=switches;
+				nrf24l01_send_data(tx_buff, 2);
+			}
+			
+		}else if(my_mode==MODE_RX){
+			if(IRQ){
+				//Something happend, check the status reg
+				nrf24l01_read_reg(0x07, rx_buff, 1);
+				if(0x01&(rx_buff[0]>>6)){
+					//there be data
+					USART_println("There be data\n");
+					
+					//Now read the actual data send from the tx
+					nrf24l01_read_rx(rx_buff,2);
+					
+					if (rx_buff[0]==eeprom_read_byte(&PairCode))
+					{
+						//Paired device sent data
+						set_portc_gpio(rx_buff[1]);
+						USART_println("Update Switches\n");
+					}else{
+						USART_println("Unknown Sender ");
+						USART_Transmit(rx_buff[0]);
+						USART_Transmit('\n');
+					}
+					
+					
+					
+				}else{
+					//I have no idea what happened
+					USART_println("What the !!??\n");
+					
+				}
+				
+				nrf24l01_reset_rx();
+				IRQ=0;
+			}
+		}
+		
 		
 		
 		
@@ -469,6 +558,7 @@ ISR(INT1_vect){
 	USART_Transmit('I');
 	USART_Transmit('\n');
 	//Re-enable the interrupts
+	IRQ=1;
 	sei();
 }
 

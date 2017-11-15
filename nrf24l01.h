@@ -8,8 +8,8 @@ typedef unsigned char uint8_t;
 #define clear(x)	memset((x), 0, sizeof((x)))
 
 /******************Defines**************************/
-#define TX_RX_BUFF_LEN					20
-#define NRF24L01_PAYLOAD_LEN			1
+#define TX_RX_BUFF_LEN					(uint8_t)20
+#define NRF24L01_PAYLOAD_LEN			(uint8_t)2
 
 /*****************External functions ***************/
 extern void nrf24l01_csn_low();			//SPI Chip Select
