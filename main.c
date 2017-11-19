@@ -47,15 +47,15 @@ uint8_t EEMEM Mode;
 #define OUTPUT_PORT			PORTC
 #define OUTPUT_DDR			DDRC
 
-//Define some macros
+//Define some macros to clear and set bits on a port
 #define setbit(port, bit)		(port) |= (1<< (bit))
 #define clearbit(port, bit)		(port) &= ~(1<<(bit))
-
+//Define unsigned char as uint8_t
 typedef unsigned char uint8_t;
 
 uint8_t rx_buff[10], tx_buff[10];
 
-
+//Struct to keep all USART_RX functionality together
 typedef struct {
 	uint8_t buff[20];
 	uint8_t valid;
@@ -102,8 +102,6 @@ uint8_t data[10];
 volatile uint8_t IRQ=0; 
 
 
-
-
 int main(void)
 {
 	//Initialise the spi
@@ -140,11 +138,23 @@ int main(void)
 	//Check what mode I am in
 	uint8_t my_mode = eeprom_read_byte(&Mode);
 	
+	if (my_mode == MODE_TX)
+	{
+		//Set up for TX
+		nrf24l01_setup_tx();
+		setup_portc_gpio(INPUT);
+		
+	} 
+	else if(my_mode== MODE_RX)
+	{
+		//Set up for RX
+		nrf24l01_setup_rx();
+		setup_portc_gpio(OUTPUT);
+		
+	}
+	
     while (1) 
     {
-		
-		
-		
 		
 		_delay_ms(100);
 		
@@ -550,7 +560,6 @@ void ISR1_init(){
  *			
  * @retval	None
  */
-
 
 ISR(INT1_vect){
 	//Clear the interrupt
