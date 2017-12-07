@@ -40,7 +40,7 @@ void st7735_init(void){
 	st7735_rst_high();
 	delay_ms(5);
 	st7735_rst_low();
-	delay_ms(5);
+	delay_ms(200);
 	st7735_rst_high();
 	delay_ms(5);
 	
@@ -51,7 +51,9 @@ void st7735_init(void){
 	st7735_write_reg(ST7735_SLPOUT);
 	//Wait for the display to wake
 	delay_ms(10);
-	
+
+	st7735_write_reg(ST7735_IDMOFF);
+	delay_ms(10);
 	//Setup 12 bit colour format
 	st7735_write_reg(ST7735_COLMOD);
 	st7735_write_data(0x05);
@@ -63,60 +65,43 @@ void st7735_init(void){
 	
 	//Turn the display on
 	st7735_write_reg(ST7735_DISPON);
+	
 	delay_ms(10);
-	
-	st7735_write_reg(ST7735_CASET);
+	//Test pattern 
+	st7735_clear(0x000f);
+	st7735_clear(0x00f0);
+	st7735_clear(0x0f00);
+	st7735_clear(0xf000);
 
-	//Now set the area
-	st7735_write_data(0x00);
-	st7735_write_data(0x00);
-	st7735_write_data(0x00);
-	st7735_write_data((uint8_t) 128);
-
-	//set the rows
-	st7735_write_reg(ST7735_RASET);
-
-	//Now set the area
-	st7735_write_data(0x00);
-	st7735_write_data(0x00);
-	st7735_write_data(0x00);
-	st7735_write_data((uint8_t) 131);
-	
-	st7735_write_data(ST7735_RAMWR);
-	
-	
-	//Dummy print
-	for(uint8_t r = 0; r< 129; r++){
-		for(uint8_t c=0; c<132; c++){
-			st7735_write_data(0x00);
-			st7735_write_data(0x0f);
-		}
-		delay_ms(1);
-	}
-	
-	st7735_write_reg(ST7735_NOP);
 
 }
 
 void st7735_write_reg(uint8_t reg){
-	//Pull the data/cmd pin high
+	//Pull the data/cmd pin low
+	st7735_D_CX_low();
+	//pull the chip select pin low
+	st7735_cs_low();
 	
-	//Pull the chip select pin low
-	
-	//Send the the data
+	//Send the data
+	spi_transmit(reg);
 	
 	//Pull the chip select high
+	st7735_cs_high();
 }
 
 
 void st7735_write_data(uint8_t data){
-	//Pull the data/cmd pin low
+	//Pull the data/cmd pin high
+	st7735_D_CX_high();
 	
 	//pull the chip select pin low
+	st7735_cs_low();
 	
 	//Send the data
+	spi_transmit(data);
 	
 	//Pull the chip select high
+	st7735_cs_high();
 }
 
 void st7735_write_multi_data(uint8_t *data, uint16_t numBytes){
@@ -140,13 +125,47 @@ void st7735_drawpixel_array(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uin
 }
 
 void st7735_set_window(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd){
+	//Set the Columns
+	st7735_write_reg(ST7735_CASET);
 	
+	//Set the area
+	st7735_write_data((uint8_t) xStart>>8);
+	st7735_write_data((uint8_t) xStart);
+	st7735_write_data((uint8_t) xEnd>>8);
+	st7735_write_data((uint8_t) xEnd);
+
+	//set the rows
+	st7735_write_reg(ST7735_RASET);
+
+	//Now set the area
+	st7735_write_data((uint8_t) yStart>>8);
+	st7735_write_data((uint8_t) yStart);
+	st7735_write_data((uint8_t) yEnd>>8);
+	st7735_write_data((uint8_t) yEnd);
+
 }
 
 void st7735_clear(uint16_t colour){
+
+	st7735_fill(0, 0, ST7735_X_LEN, ST7735_Y_LEN, colour);
 	
 }
 
 void st7735_fill(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint16_t colour){
 	
+	//Now set the area
+	st7735_set_window(x, y, x+width-1, y+height-1);
+
+
+	st7735_write_reg(ST7735_RAMWR);
+
+	for(uint8_t r=0; r<y+height; r++){
+
+		for(uint8_t c=0; c< x+width; c++){
+			st7735_write_data(colour);
+			st7735_write_data(colour>>8);
+		}
+	}
+	st7735_write_reg(ST7735_NOP);
+
 }

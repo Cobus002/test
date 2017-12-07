@@ -1,10 +1,32 @@
 #ifndef ST7735_H
 #define ST7735_H
 
+/************************************************************************/
+/* This driver makes use of the 4-line serial interface on the st7735 TFT
+   driver IC.                                                            */
+/************************************************************************/
+
+#include <stdio.h>
+
 /******************Defines**************************/
+typedef unsigned char uint8_t;
+typedef unsigned short int uint16_t;
+
+#define ST7735_X_LEN			(uint8_t) 132
+#define	ST7735_Y_LEN			(uint8_t) 162
+
+
 /*****************External functions ***************/
 extern void spi_transmit(char cData);
 extern void spi_transmit_receive(uint8_t *txBuff, uint8_t *rxBuff, uint8_t numBytes);
+extern void st7735_cs_low();			//Chip select for SPI protocol
+extern void st7735_cs_high();
+extern void st7735_rst_low();			//Used to reset the st7735 driver IC
+extern void st7735_rst_high();
+extern void st7735_D_CX_low();			//Used to distinguish between data or command
+extern void st7735_D_CX_high();
+
+extern void delay_ms(uint8_t delay_time);
 /*******************Includes************************/
 /*******************Functions***********************/
 void st7735_init(void);
