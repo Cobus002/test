@@ -54,7 +54,7 @@ void st7735_init(void){
 
 	st7735_write_reg(ST7735_IDMOFF);
 	delay_ms(10);
-	//Setup 12 bit colour format
+	//Setup 16 bit colour format
 	st7735_write_reg(ST7735_COLMOD);
 	st7735_write_data(0x05);
 	
@@ -67,7 +67,7 @@ void st7735_init(void){
 	st7735_write_reg(ST7735_DISPON);
 	
 	delay_ms(10);
-	//Test pattern 
+
 	st7735_clear(0x000f);
 	st7735_clear(0x00f0);
 	st7735_clear(0x0f00);
@@ -109,10 +109,14 @@ void st7735_write_multi_data(uint8_t *data, uint16_t numBytes){
 }
 
 void st7735_disp_on(){
+	//Turn the display on
+	st7735_write_reg(ST7735_DISPON);
 	
 }
 
 void st7735_disp_off(){
+	//Turn the display on
+	st7735_write_reg(ST7735_DISPOFF);
 	
 }
 
@@ -123,6 +127,8 @@ void st7735_drawpixel(uint16_t x, uint16_t y, uint16_t colour){
 void st7735_drawpixel_array(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd, uint16_t *data){
 	
 }
+
+
 
 void st7735_set_window(uint16_t xStart, uint16_t yStart, uint16_t xEnd, uint16_t yEnd){
 	//Set the Columns
@@ -166,6 +172,60 @@ void st7735_fill(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint16_t c
 			st7735_write_data(colour>>8);
 		}
 	}
+	st7735_write_reg(ST7735_NOP);
+
+}
+
+void st7735_draw_hline(uint8_t x, uint8_t y, uint8_t length, uint8_t width, uint16_t colour){
+	//Set the window
+	st7735_set_window(x, y, x+length-1, y+width-1);
+
+	st7735_write_reg(ST7735_RAMWR);
+
+	for(uint8_t i=0; i<(length-1)*(width); i++){
+		st7735_write_data(colour);
+		st7735_write_data(colour>>8);
+	}
+
+	st7735_write_reg(ST7735_NOP);
+}
+
+
+void st7735_draw_vline(uint8_t x, uint8_t y, uint8_t length, uint8_t width, uint16_t colour){
+	st7735_set_window(x, y, x+width-1, y+length-1);
+
+	st7735_write_reg(ST7735_RAMWR);
+
+	for(uint8_t i=0; i<(length-1)*(width); i++){
+		st7735_write_data(colour);
+		st7735_write_data(colour>>8);
+	}
+
+	st7735_write_reg(ST7735_NOP);
+}
+
+void st7735_write_char(uint8_t x, uint8_t y, const uint8_t *c, uint8_t width, uint8_t height,
+		uint16_t fg_colour, uint16_t bg_colour){
+
+	//Set the window for the char
+	st7735_set_window(x, y, x+width-1, y+height-1 );
+
+
+	st7735_write_reg(ST7735_RAMWR);
+
+	for(uint8_t i=0; i<height; i++){
+		for(uint8_t j=0; j<width; j++){
+			if((0x01&(c[i]>>j))==1){
+				st7735_write_data(fg_colour);
+				st7735_write_data(fg_colour>>8);
+
+			}else{
+				st7735_write_data(bg_colour);
+				st7735_write_data(bg_colour>>8);
+			}
+		}
+	}
+
 	st7735_write_reg(ST7735_NOP);
 
 }

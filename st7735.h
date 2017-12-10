@@ -12,8 +12,8 @@
 typedef unsigned char uint8_t;
 typedef unsigned short int uint16_t;
 
-#define ST7735_X_LEN			(uint8_t) 132
-#define	ST7735_Y_LEN			(uint8_t) 162
+#define ST7735_X_LEN					(uint8_t) 132
+#define	ST7735_Y_LEN					(uint8_t) 162
 
 
 /*****************External functions ***************/
@@ -51,7 +51,12 @@ void st7735_clear(uint16_t colour);
 
 void st7735_fill(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint16_t colour);
 
-//void st7735_write_char(uint8_t x, uint8_t y, uint8_t c, sFONT *font);
+void st7735_draw_hline(uint8_t x, uint8_t y, uint8_t length, uint8_t width, uint16_t colour);
+
+void st7735_draw_vline(uint8_t x, uint8_t y, uint8_t length, uint8_t width, uint16_t colour);
+
+void st7735_write_char(uint8_t x, uint8_t y, const uint8_t *c, uint8_t width, uint8_t height,
+		uint16_t fg_colour, uint16_t bg_colour);
 
 
 #endif
